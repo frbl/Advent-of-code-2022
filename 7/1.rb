@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 puts '=' * 10
-input = 'test.txt'
+#input = 'test.txt'
 input = 'input.txt'
 
 def command?(line)
@@ -20,35 +20,34 @@ def files(line)
   [nil, nil]
 end
 
-@struct = {}
-@cur = []
-File.foreach(input) do |line|
-  if command?(line)
-    cmd, param = parse_command(line)
-    if cmd == 'cd'
-      if param == '..'
-        @cur.pop
-      else
-        @cur.push(param)
+def build_structure(input)
+  struct = {}
+  cur = []
+  File.foreach(input) do |line|
+    if command?(line)
+      cmd, param = parse_command(line)
+      if cmd == 'cd'
+        param == '..' ? cur.pop : cur.push(param)
+        struct[cur.join] ||= { files: [], size: 0, tot_size: 0 }
       end
-      @struct[@cur.join] ||= { files: [], size: 0, tot_size: -1 }
-    end
-  else # output
+    else # output
+      size, file = files(line)
+      next if size.nil?
 
-    size, file = files(line)
-    unless size.nil?
-      @struct[@cur.join][:files] << file
-      @struct[@cur.join][:size] += size
+      struct[cur.join][:files] << file
+      struct[cur.join][:size] += size
     end
   end
+  struct
 end
 
-@struct.keys.each do |folder|
+@struct = build_structure(input)
+
+@struct.each_key do |folder|
   sub_folders = @struct.keys.select { |x| x.start_with? folder }
   @struct[folder][:tot_size] = sub_folders.reduce(0) { |sum, entry| sum + @struct[entry][:size] }
 end
 
 big_dir = @struct.select { |k, x| x[:tot_size] <= 100_000 && k != '/' }
-pp big_dir
 
-puts big_dir.sum { |k, x| x[:tot_size] }
+puts(big_dir.sum { |_k, x| x[:tot_size] })
